@@ -1,0 +1,168 @@
+---
+title: "vulnerabilidade_especies"
+author: "Fernando Almeida Barbalho"
+date: "2026-04-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(colorspace)
+
+fauna_uc_26nov2025_trabalho <- readRDS("~/github/30DayChartChallenge/fauna_uc_26nov2025_trabalho.rds")
+
+categorias_validas<- c("Menos Preocupante (LC)", "Quase Ameaçada (NT)", "Vulnerável (VU)","Em Perigo (EN)", "Criticamente em Perigo (CR)", "Regionalmente Extinta (RE)"  )
+
+categorias_validas_en<- c("Least Concern (LC)", "Near Threatened (NT)", "Vulnerable (VU)", "Endangered (EN)", "Critically Endangered", "Regionally Extinct (RE)")
+  
+de_para_categorias_validacao<-
+  tibble(categoria_validacao = categorias_validas,
+         categoria_validacao_en = categorias_validas_en)
+
+library(tibble)
+
+grupos_animais <- tribble(
+  ~grupo_avaliado, ~grupo_en,
+  "Peixes Marinhos", "Marine Fish",
+  "Peixes Continentais Amazônicos", "Amazonian Freshwater Fish",
+  "Roedores", "Rodents",
+  "Aves da Amazônia Oriental", "Eastern Amazon Birds",
+  "Aves do Cerrado e Pantanal", "Cerrado and Pantanal Birds",
+  "Aves da Mata Atlântica", "Atlantic Forest Birds",
+  "Cnidaria", "Cnidarians",
+  "Odonata", "Odonates",
+  "Quelônios Continentais", "Freshwater Turtles",
+  "Crustáceos Marinhos", "Marine Crustaceans",
+  "Aves de Ampla Distribuição", "Widespread Birds",
+  "Peixes Continentais Não Amazônicos", "Non-Amazonian Freshwater Fish",
+  "Invertebrados Troglóbios", "Troglobitic Invertebrates",
+  "Collembola", "Springtails",
+  "Lagartos", "Lizards",
+  "Abelhas", "Bees",
+  "Echinodermata", "Echinoderms",
+  "Borboletas", "Butterflies",
+  "Aves Limícolas", "Shorebirds",
+  "Moluscos Marinhos", "Marine Mollusks",
+  "Anfíbios", "Amphibians",
+  "Mariposas", "Moths",
+  "Crustáceos de Água Doce", "Freshwater Crustaceans",
+  "Coleoptera", "Beetles",
+  "Aves da Caatinga", "Caatinga Birds",
+  "Aves dos Pampas", "Pampas Birds",
+  "Aves da Amazônia Ocidental", "Western Amazon Birds",
+  "Elasmobrânquios", "Elasmobranchs",
+  "Primatas", "Primates",
+  "Serpentes", "Snakes",
+  "Morcegos", "Bats",
+  "Anfisbenas", "Amphisbaenians",
+  "Aracnídeos", "Arachnids",
+  "Peixes Troglóbios", "Troglobitic Fish",
+  "Oligochaeta", "Oligochaetes",
+  "Moluscos Continentais", "Terrestrial and Freshwater Mollusks",
+  "Aves Marinhas e Costeiras", "Seabirds and Coastal Birds",
+  "Carnívoros Terrestres", "Terrestrial Carnivores",
+  "Mamíferos Aquáticos", "Aquatic Mammals",
+  "Xenarthra", "Xenarthrans",
+  "Quelônios Marinhos", "Marine Turtles",
+  "Polychaeta", "Polychaetes",
+  "Onychophora", "Onychophorans"
+)
+
+theme_vpr<- function(paleta_cores){
+  
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      #legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_text(size = 12, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 9, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
+                      
+                      cor_fundo_painel = "#F5F5F5",
+                      
+                      cor_fundo_estados = "#696969",
+                      
+                      cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
+                      
+                      cor_texto = "#324e5a"
+)
+```
+
+
+```{r fig.dpi= 300}
+
+
+
+quantidade_perigo<-
+  fauna_uc_26nov2025_trabalho %>%
+  filter(categoria_validacao %in% c("Em Perigo (EN)", "Criticamente em Perigo (CR)", "Regionalmente Extinta (RE)")) %>%
+  summarise(quantidade_categoria_perigo = n(),
+         .by = c(grupo_avaliado)) %>%
+  arrange(quantidade_categoria_perigo)
+
+
+mais_ameacados<-
+  (fauna_uc_26nov2025_trabalho %>%
+  filter(categoria_validacao %in% categorias_validas) %>%
+  summarise(quantidade_total = n(),
+         .by = c(grupo_avaliado)) %>%
+  inner_join(quantidade_perigo) %>%
+  mutate(proporcao_perigo = quantidade_categoria_perigo/quantidade_total) %>%
+  arrange(proporcao_perigo) %>%
+  distinct(grupo_avaliado) %>%
+    inner_join(grupos_animais))$grupo_en
+
+
+
+dados_grafico_vulnerabilidade<-
+  fauna_uc_26nov2025_trabalho %>%
+  filter(categoria_validacao %in% categorias_validas) %>% 
+  summarise(quantidade = n(),
+         .by = c(grupo_avaliado, categoria_validacao))%>%
+  inner_join(quantidade_perigo) %>%
+  inner_join(de_para_categorias_validacao) %>%
+  inner_join(grupos_animais) %>%
+  mutate(categoria_validacao_en = factor(categoria_validacao_en, levels =categorias_validas_en ),
+         grupo_en = factor(grupo_en, levels = mais_ameacados))
+
+
+  
+  
+dados_grafico_vulnerabilidade %>%
+ggplot(aes(y= grupo_en, x= quantidade)  ) +
+  geom_col( aes(fill= categoria_validacao_en ), position = "fill" ) +
+  scale_fill_discrete_divergingx() +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1.0)) +
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(axis.title = element_blank(),
+        axis.text.y = element_text(size = 7, color = paleta_cores$cor_texto),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size =9)) +
+  labs(
+    title = "Risk profile of species in federal Brazilian protected areas",
+    subtitle =str_wrap("Share (%) by taxonomic group shows higher risk among troglobitic species, elasmobranchs, and marine turtles", 80),
+    caption = str_wrap("Source: ICMBio. Elaboration by Fernando Barbalho", 169),
+    fill = "Risk Categories (IUCN)"
+  )
+
+
+
+
+```
+
