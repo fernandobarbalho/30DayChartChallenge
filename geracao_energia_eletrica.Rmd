@@ -1,0 +1,84 @@
+---
+title: "geracao_energia_eletrica"
+author: "Fernando Almeida Barbalho"
+date: "2026-04-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+
+yearly_full_release_long_format <- 
+  read_csv("yearly_full_release_long_format.csv") %>%
+  janitor::clean_names()
+
+theme_vpr<- function(paleta_cores){
+  
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      #legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_text(size = 12, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 9, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
+                      
+                      cor_fundo_painel = "#F5F5F5",
+                      
+                      cor_fundo_estados = "#696969",
+                      
+                      cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
+                      
+                      cor_texto = "#324e5a"
+)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r fig.dpi= 300}
+
+
+
+
+
+
+dados_graficos_dispersao_ee<-
+  yearly_full_release_long_format %>%
+  filter(category %in% c("Electricity generation", "Power sector emissions")  ,
+         subcategory == "Aggregate fuel",
+         variable %in% c("Clean", "Fossil"),
+         year == 2025,
+         !is.na(iso_3_code),
+         unit %in% c("TWh", "mtCO2")) %>%
+  select(iso_3_code, variable, category, value) %>%
+  pivot_wider(names_from = c(category, variable) ,
+              values_from = value,
+              names_sep = "-") %>%
+  janitor::clean_names() %>%
+  mutate(emission_per_mwh_clean = power_sector_emissions_clean/electricity_generation_clean,
+         emission_per_mwh_fossil = power_sector_emissions_fossil/electricity_generation_fossil)
+
+dados_graficos_dispersao_ee %>%
+  ggplot(aes(emission_per_mwh_clean, power_sector_emissions_fossil)) +
+  geom_point()
+
+```
