@@ -8,6 +8,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
+library(colorspace)
+library(ggrepel)
 
 yearly_full_release_long_format <- 
   read_csv("yearly_full_release_long_format.csv") %>%
@@ -28,7 +30,7 @@ theme_vpr<- function(paleta_cores){
       plot.subtitle = element_text(size = 10, face = "italic"),
       text = element_text( colour = paleta_cores$cor_texto),
       strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
-      strip.text = element_text(size= 9, face ="bold", color = paleta_cores$cor_texto)
+      strip.text = element_text(size= 7, face ="bold", color = paleta_cores$cor_texto)
     )  
   
   
@@ -37,13 +39,13 @@ theme_vpr<- function(paleta_cores){
 
 paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
                       
-                      cor_fundo_painel = "#F5F5F5",
+                      cor_fundo_painel ="#2B2B2B",#  "#F5F5F5",
                       
                       cor_fundo_estados = "#696969",
                       
                       cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
                       
-                      cor_texto = "#324e5a"
+                      cor_texto =  "#324e5a" #"#F5F5F5"# 
 )
 
 ```
@@ -61,24 +63,98 @@ When you click the **Knit** button a document will be generated that includes bo
 
 
 
-dados_graficos_dispersao_ee<-
+dados_emissao_geracao<-
   yearly_full_release_long_format %>%
   filter(category %in% c("Electricity generation", "Power sector emissions")  ,
          subcategory == "Aggregate fuel",
          variable %in% c("Clean", "Fossil"),
-         year == 2025,
+         between(year, 2019, 2024) ,
          !is.na(iso_3_code),
          unit %in% c("TWh", "mtCO2")) %>%
-  select(iso_3_code, variable, category, value) %>%
-  pivot_wider(names_from = c(category, variable) ,
-              values_from = value,
-              names_sep = "-") %>%
+  summarise(total = sum(value, na.rm = TRUE),
+            .by = c(year, iso_3_code, unit)) %>%
+  pivot_wider(names_from = c(unit) ,
+              values_from = total) %>%
   janitor::clean_names() %>%
-  mutate(emission_per_mwh_clean = power_sector_emissions_clean/electricity_generation_clean,
-         emission_per_mwh_fossil = power_sector_emissions_fossil/electricity_generation_fossil)
+  mutate(emission_per_mwh = mt_co2/t_wh) 
+
+
+dados_geracao<-
+  yearly_full_release_long_format %>%  
+  filter(category %in% c("Electricity generation")  ,
+         subcategory == "Aggregate fuel",
+         variable %in% c("Clean", "Fossil"),
+         between(year, 2019, 2024) ,
+         !is.na(iso_3_code),
+         unit %in% c("TWh")) %>%
+  select(year, iso_3_code,variable, value) %>%
+  pivot_wider(names_from = variable,
+              values_from = value)
+
+top_12_geradores_2024<-
+  (dados_emissao_geracao %>%
+  filter(year == 2024) %>%
+  slice_max(n=12, order_by = t_wh))$iso_3_code
+
+
+top_12_emissores_2024<-
+  (dados_emissao_geracao %>%
+  filter(year == 2024,
+         iso_3_code %in% top_12_geradores_2024) %>%
+  slice_max(n=12, order_by = emission_per_mwh))$iso_3_code
+
+
+  
+dados_graficos_dispersao_ee <-
+  dados_emissao_geracao %>%
+  inner_join(dados_geracao) %>%
+  filter(iso_3_code %in% top_12_geradores_2024) %>%
+  mutate(year =as.factor(year),
+         iso_3_code = factor(iso_3_code, levels =top_12_emissores_2024 ))
+
+
+
+
+dados_sel_ano<-
+  dados_graficos_dispersao_ee %>%
+  filter(year %in% c(2019,2024))
+
 
 dados_graficos_dispersao_ee %>%
-  ggplot(aes(emission_per_mwh_clean, power_sector_emissions_fossil)) +
-  geom_point()
+  ggplot(aes(Clean, Fossil)) +
+  geom_point(aes(  fill = t_wh, size = emission_per_mwh), pch= 21,  color = "lightgray") +
+  geom_path( aes(group = iso_3_code) ,
+                  arrow=arrow(length=unit(0.2,"cm"), type = "closed"),
+             color = "#4FC3F7") +
+  # geom_label_repel(data = dados_sel_ano,  
+  #                 aes(label =paste0( scales::number(t_wh, accuracy = 1.0, big.mark = "."))),
+  #                 size =2,
+  #                 alpha = 0.8,
+  #                 label.padding = 0.1,
+  #                 ) +
+  scale_fill_continuous_sequential(palette = "Heat 2", labels =  scales::number_format(big.mark = ".")) +
+  #scale_x_log10() +
+  #scale_y_log10() +
+  facet_wrap(iso_3_code~., scales= "free") +
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(
+    axis.text = element_text(size = 5),
+    axis.title = element_text(size = 6),
+    legend.position = "bottom",
+    legend.title = element_text(size = 8),
+    legend.text = element_text(size = 6),
+    panel.spacing = unit(0.01,"line")
+    #legend.key.size = unit(0.8,"line")
+  ) +
+  labs(
+    fill = "Total de energia gerada em TwH",
+    size =  "Emissions in mtCO2/TWh",
+    x= "Clean sources in TwH",
+    y= "Fossil sources in TwH",
+    title = "Clean Power Rising, But Not Everywhere (2019-2024)", 
+    subtitle = str_wrap("Clean energy drives growth across major producers, with China expanding fastest on both fronts. France and Brazil remain low-emission benchmarks, while Canada, Germany, and Iran show setbacks.", 100),
+    caption = "Years from 2019 to 2024. Source: Ember. Elaboration by Fernando Barbalho"
+    
+  )
 
 ```
