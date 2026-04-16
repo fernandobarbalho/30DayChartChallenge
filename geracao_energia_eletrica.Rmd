@@ -146,7 +146,7 @@ dados_graficos_dispersao_ee %>%
 
   geom_label_repel(aes(label =paste0( ifelse(year %in% c(2019),as.character(year) ,"") ,ifelse(year %in% c(2019),": ",""), scales::number(t_wh, accuracy = 1.0, big.mark = "."),ifelse(year %in% c(2019)," TwH",""))),
                   size =2.5,
-                  alpha = 0.-8+75,
+                  alpha = 0.8,
                   #fontface = "bold",
                   color = paleta_cores$cor_texto,
                   show.legend = FALSE,
