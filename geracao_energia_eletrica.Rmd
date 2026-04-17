@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(colorspace)
 library(ggrepel)
+library(ggbreak)
+library(cluster)
 
 yearly_full_release_long_format <- 
   read_csv("yearly_full_release_long_format.csv") %>%
@@ -59,10 +61,6 @@ When you click the **Knit** button a document will be generated that includes bo
 ```{r fig.dpi= 300}
 
 
-
-
-
-
 dados_emissao_geracao<-
   yearly_full_release_long_format %>%
   filter(category %in% c("Electricity generation", "Power sector emissions")  ,
@@ -94,14 +92,14 @@ dados_geracao<-
 top_12_geradores_2024<-
   (dados_emissao_geracao %>%
   filter(year == 2024) %>%
-  slice_max(n=6, order_by = t_wh))$iso_3_code
+  slice_max(n=12, order_by = t_wh))$iso_3_code
 
 
 top_12_emissores_2024<-
   (dados_emissao_geracao %>%
   filter(year == 2024,
          iso_3_code %in% top_12_geradores_2024) %>%
-  slice_max(n=6, order_by = emission_per_mwh))$iso_3_code
+  slice_max(n=12, order_by = emission_per_mwh))$iso_3_code
 
 
   
@@ -121,6 +119,12 @@ dados_sel_ano<-
   mutate(pais_2024 = paste0(iso_3_code, " emissões em 2024: ", scales::number(emission_per_mwh, accuracy = 0.1, decimal.mark = ",", suffix = " mtCO2/TWh"))) %>%
   select(iso_3_code, pais_2024)
 
+dados_sel_ano_extremos<-
+  dados_graficos_dispersao_ee_previo %>%
+  filter(year %in% c(2019,2024)) %>%
+  mutate(pais_2024 = paste0(iso_3_code, " emissões em 2024: ", scales::number(emission_per_mwh, accuracy = 0.1, decimal.mark = ",", suffix = " mtCO2/TWh"))) 
+
+
 dados_graficos_dispersao_ee<-
   dados_graficos_dispersao_ee_previo %>%
   inner_join(dados_sel_ano) 
@@ -132,19 +136,9 @@ dados_graficos_dispersao_ee %>%
              show.legend = FALSE,
              size =1
              ) + #color = "#4FC3F7"
-  geom_point( fill= paleta_cores$cor_texto, pch= 21, color= paleta_cores$cor_fundo_painel, size =2, show.legend = FALSE) +
+  # geom_point( fill= paleta_cores$cor_texto, pch= 21, color= paleta_cores$cor_fundo_painel, size =2, show.legend = FALSE) +
 
-#   geom_label_repel(aes(label =paste0( ifelse(year %in% c(2019,2024),as.character(year) ,"") ,ifelse(year %in% c(2019,2024),":",""), scales::number(t_wh, accuracy = 1.0, big.mark = ".")),
-#                       fill = t_wh,
-#                       color = t_wh > 7000),
-#                   size =2,
-#                   alpha = 1,
-#                   fontface = "bold",
-#                   show.legend = FALSE,
-# ,                 label.padding = 0.1,
-#                   ) +
-
-  geom_label_repel(aes(label =paste0( ifelse(year %in% c(2019),as.character(year) ,"") ,ifelse(year %in% c(2019),": ",""), scales::number(t_wh, accuracy = 1.0, big.mark = "."),ifelse(year %in% c(2019)," TwH",""))),
+  geom_label_repel(data= dados_sel_ano_extremos, aes(label =paste0( ifelse(year %in% c(2019),as.character(year) ,"") ,ifelse(year %in% c(2019),": ",""), scales::number(t_wh, accuracy = 1.0, big.mark = "."),ifelse(year %in% c(2019)," TwH",""))),
                   size =2.5,
                   alpha = 0.8,
                   #fontface = "bold",
@@ -153,11 +147,6 @@ dados_graficos_dispersao_ee %>%
 ,                 label.padding = 0.1,
                   ) +
   scale_color_discrete_qualitative(palette = "Dark 2") +
-  #scale_fill_continuous_sequential(palette = "Heat 2", labels =   scales::number_format(big.mark = ".")) +
-  #scale_color_continuous_sequential(palette = "Heat 2", labels =   scales::number_format(big.mark = ".")) +
-  #scale_color_manual(values = c("black","white")) +
-  #scale_x_log10() +
-  #scale_y_log10() +
   facet_wrap(pais_2024~., scales= "free") +
   theme_vpr(paleta_cores = paleta_cores) +
   theme(
@@ -182,3 +171,133 @@ dados_graficos_dispersao_ee %>%
   )
 
 ```
+
+
+```{r fig.dpi= 300}
+
+dados_graficos_dispersao_ee %>%
+  ggplot(aes(Clean, Fossil)) +
+  geom_path( aes(group = iso_3_code, color = iso_3_code) ,
+                  arrow=arrow(length=unit(0.3,"cm"), type = "open"),
+             show.legend = FALSE,
+             #size =1
+             ) + 
+  #scale_x_log10() +
+  #scale_y_log10() +
+  scale_x_break(c(700, 1500)) + 
+  scale_x_break(c(1900, 2300)) + 
+  ggbreak::scale_y_break(c(1600, 2400)) + 
+  ggbreak::scale_y_break(c(2600, 5100)) +  #color = "#4FC3F7"
+#   geom_point( fill= paleta_cores$cor_texto, pch= 21, color= paleta_cores$cor_fundo_painel, size =2, show.legend = FALSE) +
+# 
+#   geom_label_repel(aes(label =paste0( ifelse(year %in% c(2019),as.character(year) ,"") ,ifelse(year %in% c(2019),": ",""), scales::number(t_wh, accuracy = 1.0, big.mark = "."),ifelse(year %in% c(2019)," TwH",""))),
+#                   size =2.5,
+#                   alpha = 0.8,
+#                   #fontface = "bold",
+#                   color = paleta_cores$cor_texto,
+#                   show.legend = FALSE,
+# ,                 label.padding = 0.1,
+#                   ) +
+#   scale_color_discrete_qualitative(palette = "Dark 2") +
+#   facet_wrap(pais_2024~., scales= "free") +
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(
+    axis.text = element_text(size = 5),
+    axis.title = element_text(size = 6),
+    legend.position = "bottom",
+    legend.title = element_text(size = 8),
+    legend.text = element_text(size = 6),
+    panel.spacing = unit(0.01,"line"),
+    #legend.key.size = unit(0.8,"line")
+    legend.key.height = unit(0.4,"line")
+  ) +
+  labs(
+    fill = "Total generated energy in TwH",
+    size =  "Emissions in mtCO2/TWh",
+    x= "Clean sources in TwH",
+    y= "Fossil sources in TwH",
+    title = "Clean Power Rising, But Not Everywhere (2019-2024)", 
+    subtitle = str_wrap("Clean energy drives growth across major producers. China expands 21% in fossil and 62% in clean. France and Brazil remain low-emission benchmarks, while Canada, Germany, and Iran show setbacks.", 100),
+    caption = "Years from 2019 to 2024. Source: Ember. Elaboration by Fernando Barbalho"
+    
+  )
+
+
+```
+
+```{r fig.dpi= 300}
+
+dados_modelo<- 
+  dados_geracao %>%
+  filter(year == 2024)
+
+modelo_4<- cluster::pam(dados_modelo[,3:4], k=4)
+modelo_3<- cluster::pam(dados_modelo[,3:4], k=3)
+modelo_2<- cluster::pam(dados_modelo[,3:4], k=2)
+
+
+summary(modelo_4)
+summary(modelo_2)
+
+dados_graficos_dispersao_ee_clusters<-
+  dados_graficos_dispersao_ee %>%
+  mutate( grupo = case_when(
+    iso_3_code == "CHN" ~"CHN",
+    iso_3_code == "USA" ~ "USA",
+    .default = "Rest of the world"
+  ) )
+
+
+
+dados_graficos_dispersao_ee_clusters %>%
+  ggplot(aes(Clean, Fossil)) +
+  geom_path( aes(group = iso_3_code, color = iso_3_code) ,
+                  arrow=arrow(length=unit(0.1,"cm"), type = "open"),
+             show.legend = FALSE,
+             #size =1
+             ) + 
+  #scale_x_log10() +
+  #scale_y_log10() +
+  #scale_x_break(c(700, 1500)) + 
+  #scale_x_break(c(1900, 2300)) + 
+  #ggbreak::scale_y_break(c(1600, 2400)) + 
+  #ggbreak::scale_y_break(c(2600, 5100)) +  #color = "#4FC3F7"
+#   geom_point( fill= paleta_cores$cor_texto, pch= 21, color= paleta_cores$cor_fundo_painel, size =2, show.legend = FALSE) +
+# 
+#   geom_label_repel(aes(label =paste0( ifelse(year %in% c(2019),as.character(year) ,"") ,ifelse(year %in% c(2019),": ",""), scales::number(t_wh, accuracy = 1.0, big.mark = "."),ifelse(year %in% c(2019)," TwH",""))),
+#                   size =2.5,
+#                   alpha = 0.8,
+#                   #fontface = "bold",
+#                   color = paleta_cores$cor_texto,
+#                   show.legend = FALSE,
+# ,                 label.padding = 0.1,
+#                   ) +
+#   scale_color_discrete_qualitative(palette = "Dark 2") +
+  facet_wrap(grupo~., scales= "free") +
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(
+    axis.text = element_text(size = 5),
+    axis.title = element_text(size = 6),
+    legend.position = "bottom",
+    legend.title = element_text(size = 8),
+    legend.text = element_text(size = 6),
+    panel.spacing = unit(0.01,"line"),
+    #legend.key.size = unit(0.8,"line")
+    legend.key.height = unit(0.4,"line")
+  ) +
+  labs(
+    fill = "Total generated energy in TwH",
+    size =  "Emissions in mtCO2/TWh",
+    x= "Clean sources in TwH",
+    y= "Fossil sources in TwH",
+    title = "Clean Power Rising, But Not Everywhere (2019-2024)", 
+    subtitle = str_wrap("Clean energy drives growth across major producers. China expands 21% in fossil and 62% in clean. France and Brazil remain low-emission benchmarks, while Canada, Germany, and Iran show setbacks.", 100),
+    caption = "Years from 2019 to 2024. Source: Ember. Elaboration by Fernando Barbalho"
+    
+  )
+
+
+
+
+```
+
