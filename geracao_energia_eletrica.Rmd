@@ -178,9 +178,11 @@ dados_graficos_dispersao_ee<-
 
 dados_graficos_dispersao_ee_media <-
   dados_graficos_dispersao_ee %>%
-  mutate(iso_3_code = ifelse(iso_3_code %in% c("CHN","USA"),as.character(iso_3_code),"Doze países sem CHN e USA" )) %>%
+  mutate(iso_3_code = ifelse(iso_3_code %in% c("CHN","USA"),as.character(iso_3_code),"Top países sem CHN e USA" )) %>%
   summarise(Clean  = sum(Clean),
             Fossil = sum(Fossil),
+            t_wh = sum(t_wh),
+            emission_per_mwh = sum(emission_per_mwh),
             .by = c(iso_3_code, year)) %>%
   bind_rows(
       dados_graficos_dispersao_ee %>%
@@ -221,16 +223,64 @@ dados_graficos_dispersao_ee_media %>%
             vjust = -1,
             fontface = "bold") +
   geom_text(data= dados_sel_ano_extremos_media%>%filter(iso_3_code=="USA"), 
-            aes(label =  year, color= iso_3_code,
+            aes(label = paste0("year\n", year), color= iso_3_code,
                 hjust = ifelse(year == 2019,1.1,-0.1 )), 
             show.legend = FALSE, 
-            size =2) +
-  geom_text()
+            size =2)  +
+  geom_text(data = tibble(Clean = 10, Fossil = 1800 ),
+            aes(label = "Demais top 12"),
+            hjust =0,
+            size = 3,
+             color = "lightgray",
+             alpha = 0.8,
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 800, Fossil = 60, iso_3_code = "BRA" ),
+            aes(label = "Acréscimo de 18% na geração total \nAcréscimo de 25% em energia limpa \nRedução de 25% das emissões de CO2 por TwH gerado",
+                color = iso_3_code),
+            vjust = 0,
+            hjust =0,
+            size = 3,
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 4000, Fossil = 4000, iso_3_code = "Top países sem CHN e USA" ),
+            aes(label = "Acréscimo de 9% na geração total\nAcréscimo de 13% em energia limpa\nRedução de 5% das emissões de CO2 por TwH gerado",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 2350, Fossil = 6200, iso_3_code = "CHN" ),
+            aes(label = "Acréscimo de 34% na geração total\nAcréscimo de 63% em energia limpa\nRedução de 10% das emissões de CO2 por TwH gerado",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE)  +
+  geom_text(data = tibble(Clean = 2350, Fossil = 5000, iso_3_code = "CHN" ),
+            aes(label = "Acréscimo da energia limpa (2023->2024) (520TwH) > acréscimo do\n grupo top países sem CHN e USA no período analisado (400TwH)",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE) +
+  geom_curve( data = tibble(Clean = 3500, Fossil = 6060, iso_3_code = "CHN"),
+              aes( xend = 2350, yend = 4800, color = iso_3_code),
+              curvature = -0.25, ncp = 50,
+              arrow = arrow(length = unit(2, "mm"), type = "closed"),
+              linetype = "dashed",
+              show.legend = FALSE
+  )   +
+  geom_text(data = tibble(Clean = 2000, Fossil = 2550, iso_3_code = "USA" ),
+            aes(label = "Acréscimo de 6% na geração total\nAcréscimo de 17% em energia limpa\nRedução de 13% das emissões de CO2 por TwH gerado",
+                color = iso_3_code),
+            hjust =0,
+            size = 3,
+            show.legend = FALSE) +
   #scale_x_break(c(700, 1500)) + 
   #scale_x_break(c(1900, 2300)) + 
   #ggbreak::scale_y_break(c(1600, 2400)) + 
   #ggbreak::scale_y_break(c(2800, 3500)) +  #color = "#4FC3F7"
   scale_color_discrete_qualitative(palette = "Dark 2") +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.08))) + 
   theme_vpr(paleta_cores = paleta_cores) +
   theme(
   ) +
