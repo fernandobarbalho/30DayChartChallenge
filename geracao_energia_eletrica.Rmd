@@ -315,11 +315,19 @@ dados_graficos_dispersao_ee_soma %>%
             size = 2,
             show.legend = FALSE,
             vjust = -1) +
+  scale_color_manual(
+    values = c(
+      "BRA" = "#2C7BE5",
+      "CHN" = "#D64550",
+      "USA" = "#8E7CC3",
+      "Top países sem CHN e USA" = "#F28E2B"
+    )
+  ) +
   #scale_x_break(c(700, 1500)) + 
   #scale_x_break(c(1900, 2300)) + 
   #ggbreak::scale_y_break(c(1600, 2400)) + 
   #ggbreak::scale_y_break(c(2800, 3500)) +  #color = "#4FC3F7"
-  scale_color_discrete_qualitative(palette = "Dark 2") +
+  #scale_color_discrete_qualitative(palette = "Dark 2") +
   scale_fill_discrete_qualitative(palette = "Dark 2") +
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.08))) + 
   theme_vpr(paleta_cores = paleta_cores) +
@@ -351,9 +359,18 @@ graf2<-
   ggplot(aes(x=variacao, y=iso_3_code)) +
   geom_col(aes(fill = iso_3_code ), show.legend = FALSE) +
   geom_text(aes(label = scales::percent(variacao, accuracy = 1.0)),
-            hjust = 0,
-            size =3) +
-  scale_fill_discrete_qualitative(palette = "Dark 2") +
+            hjust = -0.1,
+            size =3,
+            color = "white") +
+  scale_fill_manual(
+    values = c(
+      "BRA" = "#2C7BE5",
+      "CHN" = "#D64550",
+      "USA" = "#8E7CC3",
+      "Top países sem CHN e USA" = "#F28E2B"
+    )
+  ) +
+  #scale_fill_discrete_qualitative(palette = "Dark 2") +
   theme_vpr(paleta_cores = paleta_cores) +
   theme(
     axis.text = element_blank(),
@@ -369,6 +386,288 @@ graf2<-
 graf1 + inset_element(graf2, l=.6, b=.05, r=.97, t=.4 )
 
 ```
+
+
+```{r fig.dpi= 300}
+
+dados_emissao_geracao<-
+  yearly_full_release_long_format %>%
+  filter(category %in% c("Electricity generation", "Power sector emissions")  ,
+         subcategory == "Aggregate fuel",
+         variable %in% c("Clean", "Fossil"),
+         between(year, 2020, 2025) ,
+         !is.na(iso_3_code),
+         unit %in% c("TWh", "mtCO2")) %>%
+  summarise(total = sum(value, na.rm = TRUE),
+            .by = c(year, iso_3_code, unit)) %>%
+  pivot_wider(names_from = c(unit) ,
+              values_from = total) %>%
+  janitor::clean_names() %>%
+  mutate(emission_per_mwh = mt_co2/t_wh) 
+
+
+
+
+dados_geracao<-
+  yearly_full_release_long_format %>%  
+  filter(category %in% c("Electricity generation")  ,
+         subcategory == "Aggregate fuel",
+         variable %in% c("Clean", "Fossil"),
+         between(year, 2020, 2025) ,
+         !is.na(iso_3_code),
+         unit %in% c("TWh")) %>%
+  select(year, iso_3_code,variable, value) %>%
+  pivot_wider(names_from = variable,
+              values_from = value)
+
+top_12_geradores_2025<-
+  (dados_emissao_geracao %>%
+     filter(year == 2025) %>%
+     slice_max(n=12, order_by = t_wh))$iso_3_code
+
+
+top_12_emissores_2025<-
+  (dados_emissao_geracao %>%
+     filter(year == 2025,
+            iso_3_code %in% top_12_geradores_2025) %>%
+     slice_max(n=12, order_by = emission_per_mwh))$iso_3_code
+
+
+
+
+
+dados_graficos_dispersao_ee_previo <-
+  dados_emissao_geracao %>%
+  inner_join(dados_geracao) %>%
+  filter(iso_3_code %in% top_12_geradores_2025) %>%
+  mutate(year =as.factor(year),
+         iso_3_code = factor(iso_3_code, levels =top_12_emissores_2025 )) 
+
+
+
+
+dados_sel_ano<-
+  dados_graficos_dispersao_ee_previo %>%
+  filter(year %in% c(2025)) %>%
+  mutate(pais_2025 = paste0(iso_3_code, " emissions in 2025: ", scales::number(emission_per_mwh, accuracy = 0.1, decimal.mark = ",", suffix = " mtCO2/TWh"))) %>%
+  select(iso_3_code, pais_2025)
+
+dados_sel_ano_extremos<-
+  dados_graficos_dispersao_ee_previo %>%
+  filter(year %in% c(2020,2025))
+
+dados_graficos_dispersao_ee<-
+  dados_graficos_dispersao_ee_previo %>%
+  inner_join(dados_sel_ano) 
+
+
+
+dados_graficos_dispersao_ee_soma <-
+  dados_graficos_dispersao_ee %>%
+  mutate(iso_3_code = ifelse(iso_3_code %in% c("CHN","USA"),as.character(iso_3_code),"Top countries except CHN & USA" )) %>%
+  summarise(Clean  = sum(Clean),
+            Fossil = sum(Fossil),
+            t_wh = sum(t_wh),
+            emission_per_mwh = sum(emission_per_mwh),
+            .by = c(iso_3_code, year)) %>%
+  bind_rows(
+    dados_graficos_dispersao_ee %>%
+      filter(iso_3_code == "BRA")
+  )
+
+
+dados_graf2<-
+  dados_graficos_dispersao_ee_soma %>%
+  filter(year %in% c(2020,2025)) %>%
+  select(iso_3_code, year, emission_per_mwh) %>%
+  pivot_wider(names_from = year,
+              values_from = emission_per_mwh,
+              names_prefix = "year_") %>%
+  mutate(variacao = (year_2025/year_2020)-1) %>%
+  mutate(iso_3_code = reorder(iso_3_code,variacao))
+
+
+dados_graficos_dispersao_ee_soma$iso_3_code = factor(dados_graficos_dispersao_ee_soma$iso_3_code, levels =   sort(dados_graf2$iso_3_code) )
+
+#dados_graf2$iso_3_code = factor(dados_graf2$iso_3_code, levels =  dados_graf2$iso_3_code)
+
+
+dados_sel_ano_extremos_soma<-
+  dados_graficos_dispersao_ee_soma %>%
+  filter(year %in% c(2020,2025))
+
+dados_sel_chn_2024<-
+  dados_graficos_dispersao_ee_soma %>%
+  filter(year %in% c(2024),
+         iso_3_code == "CHN") %>%
+  mutate(year = as.character(year))
+
+
+
+graf1<-
+  dados_graficos_dispersao_ee_soma %>%
+  ggplot(aes(Clean, Fossil)) +
+  geom_path( aes(group = iso_3_code, color = iso_3_code) ,
+             arrow=arrow(length=unit(0.1,"cm"), type = "closed"),
+             show.legend = FALSE,
+             #size =1
+  ) + 
+  geom_path(  data = dados_graficos_dispersao_ee, 
+              aes(group = iso_3_code) ,
+              arrow=arrow(length=unit(0.1,"cm"), type = "closed"),
+              show.legend = FALSE,
+              color = "lightgray",
+              alpha = 1,
+              #size =1
+  ) +
+  geom_path( aes(group = iso_3_code, color = iso_3_code) ,
+             arrow=arrow(length=unit(0.1,"cm"), type = "closed"),
+             show.legend = FALSE,
+             #size =1
+  ) +
+  geom_text(data= dados_sel_ano_extremos_soma%>%filter(year==2025), 
+            aes(label =  iso_3_code, color= iso_3_code), 
+            show.legend = FALSE, 
+            size =3, 
+            vjust = -1,
+            fontface = "bold") +
+  geom_text(data= dados_sel_ano_extremos_soma%>%filter(iso_3_code=="USA"), 
+            aes(label = paste0("year\n", year), color= iso_3_code,
+                hjust = ifelse(year == 2020,1.1,-0.1 )), 
+            show.legend = FALSE, 
+            size =2)  +
+  geom_text(data = tibble(Clean = 10, Fossil = 1800 ),
+            aes(label = "Other top 12"),
+            hjust =0,
+            size = 3,
+            color = "lightgray",
+            alpha = 1,
+            fontface = "bold",
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 800, Fossil = 60, iso_3_code = "BRA" ),
+            aes(label = "19% increase in total generation \n24% increase in clean energy",
+                color = iso_3_code),
+            vjust = 0,
+            hjust =0,
+            size = 3,
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 4000, Fossil = 4000, iso_3_code = "Top countries except CHN & USA" ),
+            aes(label = "12% increase in total generation\n16% increase in clean energy",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE) +
+  geom_text(data = tibble(Clean = 2350, Fossil = 6200, iso_3_code = "CHN" ),
+            aes(label = "36% increase in total generation\n73% increase in clean energy",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE)  +
+  geom_text(data = tibble(Clean = 2700, Fossil = 5000, iso_3_code = "CHN" ),
+            aes(label = "Clean energy addition between 2024 and 2025 (558Twh) > addition\n of the group top countries except CHN & USA\n between 2020 and 2025 (498Twh)",
+                color = iso_3_code),
+            vjust = 1,
+            hjust =1,
+            size = 3,
+            show.legend = FALSE) +
+  geom_curve( data = tibble(Clean = 4000, Fossil = 6060, iso_3_code = "CHN"),
+              aes( xend = 2750, yend = 4900, color = iso_3_code),
+              curvature = -0.25, ncp = 50,
+              arrow = arrow(length = unit(2, "mm"), type = "closed"),
+              linetype = "dashed",
+              show.legend = FALSE
+  )   +
+  geom_text(data = tibble(Clean = 1400, Fossil = 2450, iso_3_code = "USA" ),
+            aes(label = "12% increase in total generation\n21% increase in clean energy",
+                color = iso_3_code),
+            hjust =1,
+            size = 3,
+            show.legend = FALSE) +
+  geom_point(data = dados_sel_chn_2024,
+             aes(color = iso_3_code),
+             #pch = 21,
+             size = 1,
+             show.legend = FALSE) +
+  geom_text(data = dados_sel_chn_2024,
+            aes(label = year,
+                color = iso_3_code),
+            size = 2,
+            show.legend = FALSE,
+            vjust = -1) +
+  #scale_x_break(c(700, 1500)) + 
+  #scale_x_break(c(1900, 2300)) + 
+  #ggbreak::scale_y_break(c(1600, 2400)) + 
+  #ggbreak::scale_y_break(c(2800, 3500)) +  #color = "#4FC3F7"
+  #scale_color_discrete_qualitative(palette = "Dark 2") +
+  scale_color_manual(
+    values = c(
+      "BRA" = "#2C7BE5",
+      "CHN" = "#D64550",
+      "USA" = "#8E7CC3",
+      "Top countries except CHN & USA" = "#F28E2B"
+    )
+  ) +
+  #scale_fill_discrete_qualitative(palette = "Dark 2") +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.08))) + 
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(
+  ) +
+  labs(
+    x= "Clean sources in Twh",
+    y= "Fossil sources in Twh",
+    title = "Clean energy reshapes growth among top generators (2020–2025)", 
+    subtitle = str_wrap("Among the 12 largest electricity generators, recent growth has been driven mainly by clean sources, led by China, while Brazil remains a low-emission benchmark.", 120),
+    caption = "Source: Ember. Prepared by Fernando Barbalho"
+    
+  )
+
+dados_graf2<-
+  dados_graficos_dispersao_ee_soma %>%
+  filter(year %in% c(2020,2025)) %>%
+  select(iso_3_code, year, emission_per_mwh) %>%
+  pivot_wider(names_from = year,
+              values_from = emission_per_mwh,
+              names_prefix = "year_") %>%
+  mutate(variacao = (year_2025/year_2020)-1) %>%
+  mutate()
+
+
+
+graf2<-
+  dados_graf2 %>%
+  ggplot(aes(x=variacao, y=iso_3_code)) +
+  geom_col(aes(fill = iso_3_code ),
+           show.legend = FALSE) +
+  geom_text(aes(label = scales::percent(variacao, accuracy = 1.0)),
+            hjust = -0.1,
+            size =3,
+            color = "white") +
+  scale_fill_manual(
+    values = c(
+      "BRA" = "#2C7BE5",
+      "CHN" = "#D64550",
+      "USA" = "#8E7CC3",
+      "Top countries except CHN & USA" = "#F28E2B"
+    )
+  ) +
+  #scale_fill_discrete_qualitative(palette = "Dark 2") +
+  theme_vpr(paleta_cores = paleta_cores) +
+  theme(
+    axis.text = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_text(size = 6),
+    axis.ticks = element_blank()
+  )+ 
+  labs(
+    y="",
+    x="Change in emissions in mtCO2/TWh (2020-2025)"
+  )
+
+graf1 + inset_element(graf2, l=.6, b=.05, r=.97, t=.4 )
+```
+
 
 ```{r fig.dpi= 300}
 
