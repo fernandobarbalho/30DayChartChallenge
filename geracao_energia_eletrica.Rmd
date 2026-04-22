@@ -338,7 +338,7 @@ dados_graficos_dispersao_ee_soma %>%
     y= "Fontes fósseis em Twh",
     title = "Energia limpa redefine crescimento nos maiores geradores (2020–2025)", 
     subtitle = str_wrap("Entre os 12 líderes em geração elétrica, o avanço recente ocorre majoritariamente via fontes limpas, liderado pela China, enquanto o Brasil permanece como benchmark de baixa emissão.", 120),
-    caption = "Fonte: Ember. Elaboração:VPR/DIESO"
+    caption = "Fonte: Ember. Elaboração: Fernando Barbalho"
     
   )
 
