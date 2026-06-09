@@ -91,10 +91,12 @@ dados_grafico_ee_capacidade_brasil %>%
                   hjust= -0.1, 
                   show.legend = FALSE,
                   direction = "y",
-                  nudge_x = 0.2)+
+                  nudge_x = 0.2,
+                  size = 3)+
+  geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
   geom_line(linewidth =1, show.legend = FALSE) +
   scale_color_discrete_qualitative(palette = "Dark 2") +
-  scale_x_continuous(breaks = seq(2000,2024,by = 4), expand = expansion(mult = c(0.01,0.4)))+
+  scale_x_continuous(breaks = seq(2000,2024,by = 4), expand = expansion(mult = c(0.01,0.3)))+
   theme_vpr(paleta_cores = paleta_cores) +
   labs(y= "Valores em GW",
        x="",
@@ -128,16 +130,69 @@ dados_grafico_ee_geracao_brasil %>%
                   hjust= -0.1, 
                   show.legend = FALSE,
                   direction = "y",
-                  nudge_x = 0.2)+
+                  nudge_x = 0.2,
+                  size = 3)+
   geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
   
   geom_line(linewidth =1, show.legend = FALSE) +
   scale_color_discrete_qualitative(palette = "Dark 2") +
-  scale_x_continuous(breaks = seq(2000,2025,by = 5), expand = expansion(mult = c(0.01,0.4)))+
+  scale_x_continuous(breaks = seq(2000,2025,by = 5), expand = expansion(mult = c(0.01,0.3)))+
   theme_vpr(paleta_cores = paleta_cores)+
   labs(y= "Valores em TWh",
        x="",
        title =  "Geração de energia elétrica por fontes no Brasil")
+
+```
+
+```{r fig.dpi= 300}
+
+dados_grafico_ee_demanda_geracao_brasil<-
+  yearly_full_release_long_format %>%
+  filter(subcategory == "Demand",
+         iso_3_code == "BRA") %>%
+  bind_rows(
+    yearly_full_release_long_format %>%
+      filter(iso_3_code == "BRA",
+             category == "Electricity generation",
+             unit == "TWh",
+             subcategory == "Aggregate fuel",
+             variable %in% c("Clean", "Fossil")),
+    yearly_full_release_long_format %>%
+      filter(category == "Electricity imports",
+             iso_3_code == "BRA")
+    
+    
+  ) %>%
+  summarise(value = sum(value),
+            .by = c(year, category)) %>%
+  mutate(category = case_when(
+    str_detect(category, "demand") ~ "Demanda",
+    str_detect(category, "generation") ~ "Geração",
+    str_detect(category, "imports") ~ "Importação\nlíquida"
+  ))
+
+ultimo_ano<-
+  dados_grafico_ee_demanda_geracao_brasil %>%
+  filter(year == 2025 )
+
+dados_grafico_ee_demanda_geracao_brasil %>%
+  ggplot(aes(x= year, y= value, color= category)) +
+  geom_text_repel(data = ultimo_ano, aes(label = paste0(category, scales::number(value, accuracy = 1.0, prefix = "(", suffix = " TWh)")  )), 
+                  hjust= -0.1, 
+                  show.legend = FALSE,
+                  direction = "y",
+                  nudge_x = 0.2,
+                  size = 3)+
+  geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
+  
+  geom_line(linewidth =1, show.legend = FALSE) +
+  scale_color_discrete_qualitative(palette = "Dark 2") +
+  scale_x_continuous(breaks = seq(2000,2025,by = 5), expand = expansion(mult = c(0.01,0.3)))+
+  theme_vpr(paleta_cores = paleta_cores)+
+  labs(y= "Valores em TWh",
+       x="",
+       title =  "Geração x Demanda de energia elétrica por fontes no Brasil")
+
 
 ```
 
