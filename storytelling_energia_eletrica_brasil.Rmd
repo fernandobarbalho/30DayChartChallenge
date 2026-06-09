@@ -1,0 +1,143 @@
+---
+title: "storytelling_energia_eletrica_brasil"
+author: "Fernando Almeida Barbalho"
+date: "2026-06-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(colorspace)
+library(ggrepel)
+
+# endereco_aneel<- "https://dadosabertos.aneel.gov.br/dataset/6d90b77c-c5f5-4d81-bdec-7bc619494bb9/resource/2f65a1b0-19b8-4360-8238-b34ab4693d55/download/siga-empreendimentos-geracao-diario.csv"
+# 
+# siga_empreendimentos_geracao<- 
+#   read_delim(endereco_aneel,
+#              delim = ";",
+#              escape_double = FALSE,
+#              locale = locale(decimal_mark = ",",
+#                              grouping_mark = ".",
+#                              encoding = "latin1"),
+#              trim_ws = TRUE) %>%
+#   janitor::clean_names()
+
+
+yearly_full_release_long_format <- 
+  read_csv("yearly_full_release_long_format(1).csv") %>%
+  janitor::clean_names()
+
+de_para_variable<-
+tibble(
+  variable = c("Hydro", "Solar", "Wind","Gas", "Bioenergy",  "Others"),
+  variable_pt = c("Hídrelétrica", "Solar", "Eólica", "Gás", "Bio-energia", "Outras")
+)
+
+theme_vpr<- function(paleta_cores){
+  
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      #legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_text(size = 12, face = "bold"),
+      plot.subtitle = element_text(size = 8, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 7, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
+                      
+                      cor_fundo_painel ="#F5F5F5",# "#D0D0D0",# "#2B2B2B",#  "#F5F5F5",
+                      
+                      cor_fundo_estados = "#696969",
+                      
+                      cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
+                      
+                      cor_texto =  "#324e5a" #"#F5F5F5"# 
+)
+```
+
+```{r fig.dpi= 300}
+
+
+dados_grafico_ee_capacidade_brasil<-
+  yearly_full_release_long_format %>%
+  filter(iso_3_code == "BRA",
+         category == "Capacity",
+         subcategory == "Fuel") %>%
+  mutate(variable = ifelse(variable %in% c("Hydro", "Solar", "Wind", "Gas", "Bioenergy"), variable, "Others")) %>%
+  inner_join(de_para_variable) %>%
+  summarise(value = sum(value),
+            .by = c(year, variable_pt))
+
+ultimo_ano<-
+  dados_grafico_ee_capacidade_brasil %>%
+  filter(year == 2024 )
+
+dados_grafico_ee_capacidade_brasil %>%
+  ggplot(aes(x= year, y= value, color= variable_pt)) +
+  geom_text_repel(data = ultimo_ano, aes(label = paste0(variable_pt, scales::number(value, accuracy = 1.0, prefix = "(", suffix = " GW)")  )), 
+                  hjust= -0.1, 
+                  show.legend = FALSE,
+                  direction = "y",
+                  nudge_x = 0.2)+
+  geom_line(linewidth =1, show.legend = FALSE) +
+  scale_color_discrete_qualitative(palette = "Dark 2") +
+  scale_x_continuous(breaks = seq(2000,2024,by = 4), expand = expansion(mult = c(0.01,0.4)))+
+  theme_vpr(paleta_cores = paleta_cores) +
+  labs(y= "Valores em GW",
+       x="",
+       title =  "Capacidade de geração de energia elétrica por fontes no Brasil")
+
+```
+
+
+
+
+
+```{r fig.dpi=300}
+
+dados_grafico_ee_geracao_brasil<-
+  yearly_full_release_long_format %>%
+  filter(iso_3_code == "BRA",
+         category == "Electricity generation",
+         subcategory == "Fuel") %>%
+  mutate(variable = ifelse(variable %in% c("Hydro", "Solar", "Wind", "Gas", "Bioenergy"), variable, "Others")) %>%
+  inner_join(de_para_variable) %>%
+  summarise(value = sum(value),
+            .by = c(year, variable_pt))
+
+ultimo_ano<-
+  dados_grafico_ee_geracao_brasil %>%
+  filter(year == 2025 )
+
+dados_grafico_ee_geracao_brasil %>%
+  ggplot(aes(x= year, y= value, color= variable_pt)) +
+  geom_text_repel(data = ultimo_ano, aes(label = paste0(variable_pt, scales::number(value, accuracy = 1.0, prefix = "(", suffix = " TWh)")  )), 
+                  hjust= -0.1, 
+                  show.legend = FALSE,
+                  direction = "y",
+                  nudge_x = 0.2)+
+  geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
+  
+  geom_line(linewidth =1, show.legend = FALSE) +
+  scale_color_discrete_qualitative(palette = "Dark 2") +
+  scale_x_continuous(breaks = seq(2000,2025,by = 5), expand = expansion(mult = c(0.01,0.4)))+
+  theme_vpr(paleta_cores = paleta_cores)+
+  labs(y= "Valores em TWh",
+       x="",
+       title =  "Geração de energia elétrica por fontes no Brasil")
+
+```
+
