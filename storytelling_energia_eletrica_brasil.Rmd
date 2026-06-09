@@ -73,13 +73,13 @@ paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
 
 dados_grafico_ee_capacidade_brasil<-
   yearly_full_release_long_format %>%
-  filter(iso_3_code == "BRA",
+  filter(iso_3_code %in%  c("BRA", "NLD") ,
          category == "Capacity",
          subcategory == "Fuel") %>%
   mutate(variable = ifelse(variable %in% c("Hydro", "Solar", "Wind", "Gas", "Bioenergy"), variable, "Others")) %>%
   inner_join(de_para_variable) %>%
   summarise(value = sum(value),
-            .by = c(year, variable_pt))
+            .by = c(area,year, variable_pt))
 
 ultimo_ano<-
   dados_grafico_ee_capacidade_brasil %>%
@@ -100,7 +100,8 @@ dados_grafico_ee_capacidade_brasil %>%
   theme_vpr(paleta_cores = paleta_cores) +
   labs(y= "Valores em GW",
        x="",
-       title =  "Capacidade de geração de energia elétrica por fontes no Brasil")
+       title =  "Capacidade de geração de energia elétrica por fontes no Brasil e na Holanda") +
+  facet_grid(area~., scales = "free_y")
 
 ```
 
@@ -112,13 +113,13 @@ dados_grafico_ee_capacidade_brasil %>%
 
 dados_grafico_ee_geracao_brasil<-
   yearly_full_release_long_format %>%
-  filter(iso_3_code == "BRA",
+  filter(iso_3_code %in%  c("BRA", "NLD"),
          category == "Electricity generation",
          subcategory == "Fuel") %>%
   mutate(variable = ifelse(variable %in% c("Hydro", "Solar", "Wind", "Gas", "Bioenergy"), variable, "Others")) %>%
   inner_join(de_para_variable) %>%
   summarise(value = sum(value),
-            .by = c(year, variable_pt))
+            .by = c(year, area, variable_pt))
 
 ultimo_ano<-
   dados_grafico_ee_geracao_brasil %>%
@@ -140,7 +141,8 @@ dados_grafico_ee_geracao_brasil %>%
   theme_vpr(paleta_cores = paleta_cores)+
   labs(y= "Valores em TWh",
        x="",
-       title =  "Geração de energia elétrica por fontes no Brasil")
+       title =  "Geração de energia elétrica por fontes no Brasil e na Holanda") +
+  facet_grid(area~., scale = "free_y")
 
 ```
 
@@ -149,22 +151,22 @@ dados_grafico_ee_geracao_brasil %>%
 dados_grafico_ee_demanda_geracao_brasil<-
   yearly_full_release_long_format %>%
   filter(subcategory == "Demand",
-         iso_3_code == "BRA") %>%
+         iso_3_code %in%  c("BRA", "NLD") ) %>%
   bind_rows(
     yearly_full_release_long_format %>%
-      filter(iso_3_code == "BRA",
+      filter(iso_3_code %in%  c("BRA", "NLD") ,
              category == "Electricity generation",
              unit == "TWh",
              subcategory == "Aggregate fuel",
              variable %in% c("Clean", "Fossil")),
     yearly_full_release_long_format %>%
       filter(category == "Electricity imports",
-             iso_3_code == "BRA")
+             iso_3_code %in%  c("BRA", "NLD"))
     
     
   ) %>%
   summarise(value = sum(value),
-            .by = c(year, category)) %>%
+            .by = c(area, year, category)) %>%
   mutate(category = case_when(
     str_detect(category, "demand") ~ "Demanda",
     str_detect(category, "generation") ~ "Geração",
@@ -191,7 +193,8 @@ dados_grafico_ee_demanda_geracao_brasil %>%
   theme_vpr(paleta_cores = paleta_cores)+
   labs(y= "Valores em TWh",
        x="",
-       title =  "Geração x Demanda de energia elétrica por fontes no Brasil")
+       title =  "Geração x Demanda de energia elétrica por fontes no Brasil e na Holanda")+
+  facet_grid(area~., scale = "free_y")
 
 
 ```
