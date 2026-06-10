@@ -92,7 +92,8 @@ dados_grafico_ee_capacidade_brasil %>%
                   show.legend = FALSE,
                   direction = "y",
                   nudge_x = 0.2,
-                  size = 3)+
+                  size = 3,
+                  segment.alpha = 0.2)+
   geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
   geom_line(linewidth =1, show.legend = FALSE) +
   scale_color_discrete_qualitative(palette = "Dark 2") +
@@ -100,7 +101,9 @@ dados_grafico_ee_capacidade_brasil %>%
   theme_vpr(paleta_cores = paleta_cores) +
   labs(y= "Valores em GW",
        x="",
-       title =  "Capacidade de geração de energia elétrica por fontes no Brasil e na Holanda") +
+       title =  "Da hidreletricidade às renováveis intermitentes",
+       subtitle = "Brasil e Holanda ampliaram fortemente sua capacidade solar e eólica nas últimas duas décadas. No Brasil, a expansão ocorreu\nsobre uma ampla base hidrelétrica; na Holanda, sobre uma matriz historicamente dependente do gás natural.",
+       caption = "Fonte: EMBER. Elaboração: VPR/DIESO") +
   facet_grid(area~., scales = "free_y")
 
 ```
@@ -132,7 +135,8 @@ dados_grafico_ee_geracao_brasil %>%
                   show.legend = FALSE,
                   direction = "y",
                   nudge_x = 0.2,
-                  size = 3)+
+                  size = 3,
+                  segment.alpha = 0.2)+
   geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
   
   geom_line(linewidth =1, show.legend = FALSE) +
@@ -141,7 +145,9 @@ dados_grafico_ee_geracao_brasil %>%
   theme_vpr(paleta_cores = paleta_cores)+
   labs(y= "Valores em TWh",
        x="",
-       title =  "Geração de energia elétrica por fontes no Brasil e na Holanda") +
+       title =  "Solar e eólica ganham protagonismo na geração elétrica",
+       subtitle = "As novas renováveis respondem por parcela crescente da eletricidade produzida nos dois países. No Brasil, o avanço\ncomplementa uma matriz já majoritariamente renovável e reduz a dependência das condições hidrológicas.",
+       caption = "Fonte: EMBER. Elaboração: VPR/DIESO") +
   facet_grid(area~., scale = "free_y")
 
 ```
@@ -184,7 +190,8 @@ dados_grafico_ee_demanda_geracao_brasil %>%
                   show.legend = FALSE,
                   direction = "y",
                   nudge_x = 0.2,
-                  size = 3)+
+                  size = 3,
+                  segment.alpha = 0.2)+
   geom_point(data = ultimo_ano, size = 2, show.legend = FALSE)+
   
   geom_line(linewidth =1, show.legend = FALSE) +
@@ -193,7 +200,9 @@ dados_grafico_ee_demanda_geracao_brasil %>%
   theme_vpr(paleta_cores = paleta_cores)+
   labs(y= "Valores em TWh",
        x="",
-       title =  "Geração x Demanda de energia elétrica por fontes no Brasil e na Holanda")+
+       title =  "O próximo desafio é administrar a abundância energética",
+       subtitle = "A expansão das renováveis fortalece a segurança energética, mas exige maior flexibilidade operacional, armazenamento\ne novos usos para a eletricidade.",
+       caption = "Fonte: EMBER. Elaboração: VPR/DIESO")+
   facet_grid(area~., scale = "free_y")
 
 
